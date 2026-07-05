@@ -1,0 +1,54 @@
+api_version: 1.0.0
+app_name: ClinicalGenie
+description: Flat API specification for Genomic Variant & Clinical Trial Matching Agent
+
+endpoints:
+  - path: /api/search
+    method: GET
+    description: Resolution and mapping endpoint for variants, pathways, clinical trials, and drug safety.
+    parameters:
+      - name: q
+        in: query
+        required: true
+        type: string
+        pattern: "^(rs\\d+|\\d+\\s+\\d+\\s+[ATCGatcg-]+\\s+[ATCGatcg-]+|[a-zA-Z0-9_-]+)$"
+        description: Acceptable formats include rsIDs (e.g. rs7412), genomic coordinates (e.g. 19 44908684 T C), or gene symbols (e.g. BRCA1).
+    response_schema:
+      status: string
+      query_type: string
+      resolved_query: string
+      variant_details:
+        refsnp_id: string
+        chrom: string
+        pos: integer
+        ref: string
+        alt: string
+        variant_type: string
+        associated_genes: list
+        clinical_significance: list
+        allele_frequencies: list
+      biological_pathways:
+        pathways: list
+        interactions: list
+      matched_clinical_trials:
+        total_count: integer
+        trials_list: list
+      drug_safety_warnings:
+        adverse_events: list
+        recalls_or_enforcements: list
+      clinical_synthesis: string
+
+  - path: /api/eval
+    method: GET
+    description: Executes the Evaluation-Driven Development (EDD) validation suite and returns a glass-box trajectory scorecard.
+    response_schema:
+      status: string
+      timestamp: string
+      total_tests: integer
+      passed_tests: integer
+      scorecard:
+        trigger_accuracy: float
+        trajectory_completeness: float
+        execution_quality: float
+        average_token_overhead: float
+      detailed_results: list

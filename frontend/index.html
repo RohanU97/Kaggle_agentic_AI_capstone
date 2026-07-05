@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClinicalGenie — Genomic Variant & Clinical Trial Matching Agent</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <!-- Background glowing accents -->
+    <div class="glow-sphere glow-sphere-1"></div>
+    <div class="glow-sphere glow-sphere-2"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-dna-helix fa-spin-pulse"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>Clinical<span>Genie</span></h1>
+                    <p>Genomic Variant & Clinical Trial Orchestration Agent</p>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <span class="pulse-dot"></span>
+                <span class="status-text">Agent Online</span>
+            </div>
+        </header>
+
+        <!-- Search Bar -->
+        <section class="search-section card">
+            <form id="search-form" class="search-form">
+                <div class="search-input-wrapper">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="query-input" placeholder="Enter Variant rsID (e.g. rs7412), Genomic Coordinates (e.g. 19 44908684 T C), or Gene Symbol (e.g. BRCA1)..." autocomplete="off" required>
+                    <button type="submit" id="search-btn">
+                        <span>Execute Pipeline</span>
+                        <i class="fa-solid fa-play"></i>
+                    </button>
+                </div>
+                <div class="search-examples">
+                    <span>Try:</span>
+                    <a href="#" class="example-link" data-query="rs7412">rs7412</a>
+                    <a href="#" class="example-link" data-query="19 44908684 T C">19 44908684 T C</a>
+                    <a href="#" class="example-link" data-query="BRCA1">BRCA1</a>
+                </div>
+            </form>
+        </section>
+
+        <!-- Main Display Grid -->
+        <main class="main-content">
+            <!-- Loading Panel -->
+            <div id="loader" class="loader-container hidden">
+                <div class="dna-spinner">
+                    <div class="dna-node"></div>
+                    <div class="dna-node"></div>
+                    <div class="dna-node"></div>
+                    <div class="dna-node"></div>
+                    <div class="dna-node"></div>
+                </div>
+                <p id="loader-status">Agent parsing query & routing to database sub-pipelines...</p>
+            </div>
+
+            <!-- Welcome / Empty State -->
+            <div id="welcome-state" class="welcome-container text-center">
+                <div class="welcome-icon">
+                    <i class="fa-solid fa-microscope"></i>
+                </div>
+                <h2>Autonomous Genomic Mapping Engine</h2>
+                <p>Submit a genetic variant or gene above. The agent will execute an autonomous retrieval pipeline mapping data from dbSNP, ClinVar, ClinicalTrials.gov, and OpenFDA, compiling findings in real time.</p>
+                <div class="welcome-features">
+                    <div class="feat">
+                        <i class="fa-solid fa-bezier-curve"></i>
+                        <h3>Spec-Driven</h3>
+                        <p>Strict schema validations</p>
+                    </div>
+                    <div class="feat">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <h3>Zero-Trust Harness</h3>
+                        <p>JIT downscoped execution</p>
+                    </div>
+                    <div class="feat">
+                        <i class="fa-solid fa-list-check"></i>
+                        <h3>Glass-Box Eval</h3>
+                        <p>Trajectory verification</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div id="results-panel" class="results-container hidden">
+                <!-- Navigation Tabs -->
+                <nav class="nav-tabs">
+                    <button class="tab-btn active" data-tab="synthesis-tab">
+                        <i class="fa-solid fa-file-medical"></i> Clinical Memo
+                    </button>
+                    <button class="tab-btn" data-tab="variant-tab" id="tab-variant-btn">
+                        <i class="fa-solid fa-dna"></i> Variant Profile
+                    </button>
+                    <button class="tab-btn" data-tab="trials-tab">
+                        <i class="fa-solid fa-notes-medical"></i> Clinical Trials
+                    </button>
+                    <button class="tab-btn" data-tab="safety-tab">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Drug Warnings
+                    </button>
+                    <button class="tab-btn" data-tab="trajectory-tab">
+                        <i class="fa-solid fa-route"></i> Agent Trajectory
+                    </button>
+                </nav>
+
+                <!-- Tab Content Sections -->
+                <div class="tab-content-container">
+                    <!-- Tab: Clinical Synthesis -->
+                    <div id="synthesis-tab" class="tab-panel active">
+                        <div class="card panel-card">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-file-invoice-dollar text-purple"></i> Translational Medicine Summary</h2>
+                                <span class="badge badge-purple" id="resolved-query-badge">rs7412</span>
+                            </div>
+                            <div id="synthesis-content" class="markdown-body">
+                                <!-- Rendered clinical synthesis memo -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Variant Profile -->
+                    <div id="variant-tab" class="tab-panel">
+                        <div class="variant-grid">
+                            <!-- dbSNP Details -->
+                            <div class="card">
+                                <div class="panel-header">
+                                    <h3><i class="fa-solid fa-database text-teal"></i> dbSNP RefSNP Profile</h3>
+                                </div>
+                                <div class="profile-details">
+                                    <div class="profile-row">
+                                        <span class="label">rsID</span>
+                                        <span class="value" id="profile-rsid">-</span>
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="label">Variant Type</span>
+                                        <span class="value" id="profile-type">-</span>
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="label">Chromosome</span>
+                                        <span class="value" id="profile-chrom">-</span>
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="label">Position (GRCh38)</span>
+                                        <span class="value" id="profile-pos">-</span>
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="label">Reference / Alternate</span>
+                                        <span class="value" id="profile-alleles">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ClinVar Details -->
+                            <div class="card">
+                                <div class="panel-header">
+                                    <h3><i class="fa-solid fa-notes-medical text-magenta"></i> ClinVar Clinical Ground Truth</h3>
+                                </div>
+                                <div class="profile-details">
+                                    <div class="profile-row">
+                                        <span class="label">Clinical Significance</span>
+                                        <span class="value" id="profile-significance">-</span>
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="label">Associated Phenotypes</span>
+                                        <span class="value" id="profile-phenotype">-</span>
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="label">Review Status</span>
+                                        <span class="value" id="profile-review">-</span>
+                                    </div>
+                                    <div class="profile-row">
+                                        <span class="label">Last Evaluated</span>
+                                        <span class="value" id="profile-evaluated">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Clinical Trials -->
+                    <div id="trials-tab" class="tab-panel">
+                        <div class="card panel-card">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-microscope text-blue"></i> Matched Recruiting Trials</h2>
+                                <span class="badge badge-blue" id="trials-count-badge">0 matched</span>
+                            </div>
+                            <div id="trials-list" class="trials-container">
+                                <!-- Trial lists will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Drug Warnings -->
+                    <div id="safety-tab" class="tab-panel">
+                        <div class="card panel-card">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-triangle-exclamation text-yellow"></i> OpenFDA Safety Signals & Adverse Events</h2>
+                            </div>
+                            <div class="fda-grid">
+                                <div class="fda-chart-card">
+                                    <h3>Top Adverse Events (MedDRA Terms)</h3>
+                                    <div id="fda-reactions-chart" class="bar-chart-container">
+                                        <!-- Chart items will be injected here -->
+                                    </div>
+                                </div>
+                                <div class="fda-info-card">
+                                    <h3>FDA Pharmacovigilance Insights</h3>
+                                    <p>Safety signals represent statistical associations of adverse drug events. Genetic mutations affecting pathways can augment drug sensitivities, leading to variations in the reaction profiles displayed.</p>
+                                    <div class="alert-box alert-warning">
+                                        <i class="fa-solid fa-shield-virus"></i>
+                                        <span>Warnings resolved using ClinVar molecular consequences and GTEx expression profiles.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Trajectory -->
+                    <div id="trajectory-tab" class="tab-panel">
+                        <div class="card panel-card">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-route text-cyan"></i> Agent Tool Execution Trajectory</h2>
+                            </div>
+                            <p class="panel-desc">Glass-Box validation traces the exact path of database sub-pipelines executed by the agent to ensure compliance with clinical workflows.</p>
+                            <div class="trajectory-visualizer" id="trajectory-flow">
+                                <!-- Visual tool steps will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer / Test Panel Trigger -->
+        <footer class="app-footer">
+            <div class="footer-left">
+                <p>&copy; 2026 ClinicalGenie Capstone. Built with Spec-Driven & Evaluation-Driven Agentic principles.</p>
+            </div>
+            <div class="footer-right">
+                <button id="run-eval-btn" class="btn btn-secondary">
+                    <i class="fa-solid fa-flask"></i> Run EDD Verification Suite
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal for EDD Evaluation Results -->
+    <div id="eval-modal" class="modal hidden">
+        <div class="modal-content card">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-vial text-purple"></i> Glass-Box Evaluation Scorecard</h2>
+                <button class="close-btn" id="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body" id="eval-modal-body">
+                <!-- Evaluation scorecard results injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

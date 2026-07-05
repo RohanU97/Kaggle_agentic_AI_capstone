@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.env.local
+.env.*
+.venv
+venv/
+ENV_FILE
+
+# Project-specific ignores
+scratch/
+cookies.txt
+*.log
+*.tmp
+
+# PDF course materials
+*.pdf
+
+# Local utility scripts
+convert_webp_to_mp4.py
+
+# Large video assets
+assets/demo.mp4

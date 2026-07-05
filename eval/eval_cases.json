@@ -1,0 +1,41 @@
+[
+  {
+    "id": "case_1_rsid",
+    "name": "Search Variant by rsID (rs7412)",
+    "query": "rs7412",
+    "expected_query_type": "rsid",
+    "expected_gene": "APOE",
+    "expected_trajectory": [
+      "dbsnp:get-variant",
+      "clinvar:summary",
+      "clinical-trials:search",
+      "openfda:count"
+    ],
+    "trajectory_rule": "IN_ORDER"
+  },
+  {
+    "id": "case_2_coords",
+    "name": "Search Variant by Coordinates (19 44908684 T C)",
+    "query": "19 44908684 T C",
+    "expected_query_type": "coordinates",
+    "expected_gene": "APOE",
+    "expected_trajectory": [
+      "dbsnp:resolve-variant",
+      "clinvar:summary",
+      "clinical-trials:search"
+    ],
+    "trajectory_rule": "IN_ORDER"
+  },
+  {
+    "id": "case_3_gene",
+    "name": "Search by Gene Symbol (BRCA1)",
+    "query": "BRCA1",
+    "expected_query_type": "gene",
+    "expected_gene": "BRCA1",
+    "expected_trajectory": [
+      "clinical-trials:search",
+      "openfda:search"
+    ],
+    "trajectory_rule": "ANY_ORDER"
+  }
+]
