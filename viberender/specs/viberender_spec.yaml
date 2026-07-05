@@ -1,0 +1,37 @@
+api_version: 1.0.0
+app_name: VibeRender
+description: Flat API specification for Autonomous 3D Product Mockup Generator
+
+endpoints:
+  - path: /api/viberender/generate
+    method: GET
+    description: Translates a scene description into a Blender script, scene metadata tree, and simulated 3D viewport render.
+    parameters:
+      - name: q
+        in: query
+        required: true
+        type: string
+        description: Natural language prompt describing the product placement, materials, setting, and lighting.
+    response_schema:
+      status: string
+      prompt: string
+      scene_tree:
+        objects: list
+        lights: list
+        camera: object
+      blender_script: string
+      render_image: string
+
+  - path: /api/viberender/eval
+    method: GET
+    description: Executes the VibeRender EDD validation suite and returns a glass-box trajectory scorecard.
+    response_schema:
+      status: string
+      timestamp: string
+      total_tests: integer
+      passed_tests: integer
+      scorecard:
+        trigger_accuracy: float
+        trajectory_completeness: float
+        execution_quality: float
+      detailed_results: list

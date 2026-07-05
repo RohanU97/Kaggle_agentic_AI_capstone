@@ -1,0 +1,26 @@
+[
+  {
+    "id": "case_1_perfume",
+    "name": "Generate Perfume Scene Mockup",
+    "query": "A sleek perfume bottle on a marble table in a forest setting at sunset",
+    "expected_objects": ["perfume bottle", "table"],
+    "expected_trajectory": [
+      "agent:parse-prompt",
+      "agent:generate-script",
+      "blender:render-mock"
+    ],
+    "trajectory_rule": "EXACT"
+  },
+  {
+    "id": "case_2_mug",
+    "name": "Generate Mug Scene Mockup",
+    "query": "A minimalist coffee mug on a wooden desk with warm indoor lighting",
+    "expected_objects": ["coffee mug", "desk"],
+    "expected_trajectory": [
+      "agent:parse-prompt",
+      "agent:generate-script",
+      "blender:render-mock"
+    ],
+    "trajectory_rule": "EXACT"
+  }
+]

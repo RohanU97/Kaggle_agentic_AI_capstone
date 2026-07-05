@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeRender — Autonomous 3D Ad Mockup Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <div class="glass-bg"></div>
+    
+    <header class="app-header">
+        <div class="header-logo">
+            <span class="logo-icon">💠</span>
+            <div class="logo-text">
+                <h1>VibeRender</h1>
+                <span class="subtitle">Autonomous 3D Mockup Agent</span>
+            </div>
+        </div>
+        <div class="header-status">
+            <span class="status-indicator"></span>
+            <span class="status-label">Blender Simulator Mode</span>
+        </div>
+    </header>
+
+    <main class="app-workspace">
+        <!-- Left Panel: Scene Prompter -->
+        <section class="panel control-panel">
+            <div class="panel-header">
+                <h2>Scene Settings</h2>
+            </div>
+            <div class="panel-content">
+                <div class="input-group">
+                    <label for="prompt-input">Scene Description</label>
+                    <textarea id="prompt-input" placeholder="e.g. A sleek perfume bottle on a marble table in a forest setting at sunset..."></textarea>
+                </div>
+
+                <div class="params-grid">
+                    <div class="input-group">
+                        <label for="camera-fov">Camera FOV</label>
+                        <input type="range" id="camera-fov" min="30" max="90" value="50">
+                        <span class="value-badge" id="fov-val">50°</span>
+                    </div>
+                    <div class="input-group">
+                        <label for="light-power">Light Energy</label>
+                        <input type="range" id="light-power" min="200" max="2000" step="100" value="1000">
+                        <span class="value-badge" id="light-val">1000W</span>
+                    </div>
+                    <div class="input-group">
+                        <label for="render-engine">Render Engine</label>
+                        <select id="render-engine">
+                            <option value="cycles">Cycles (Raytraced)</option>
+                            <option value="eevee">Eevee (Realtime)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="samples">Samples</label>
+                        <select id="samples">
+                            <option value="64">64 (Fast)</option>
+                            <option value="128" selected>128 (Balanced)</option>
+                            <option value="512">512 (Production)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="render-btn" class="primary-btn">
+                    <span class="btn-icon">⚡</span>
+                    <span class="btn-text">Compile & Render</span>
+                </button>
+
+                <div class="quick-prompts">
+                    <h3>Quick Presets</h3>
+                    <div class="preset-tags">
+                        <button class="preset-tag" data-prompt="A sleek perfume bottle on a marble table in a forest setting at sunset">Perfume Bottle</button>
+                        <button class="preset-tag" data-prompt="A minimalist coffee mug on a wooden desk with warm indoor lighting">Coffee Mug</button>
+                        <button class="preset-tag" data-prompt="A modern smartphone on a metal stand with cyber neon illumination">Smartphone</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Center Panel: 3D Viewport -->
+        <section class="panel viewport-panel">
+            <div class="panel-header">
+                <h2>3D Viewport Preview</h2>
+                <div class="viewport-stats" id="viewport-stats">Ready</div>
+            </div>
+            <div class="viewport-body">
+                <div id="loading-spinner" class="spinner-container hidden">
+                    <div class="dna-spinner"></div>
+                    <p>Orchestrating agent pipeline...</p>
+                </div>
+                <div class="viewport-canvas-container">
+                    <img id="viewport-image" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="hidden" alt="Simulated Render Viewport">
+                    <div id="viewport-placeholder" class="viewport-placeholder">
+                        <span class="placeholder-icon">📐</span>
+                        <p>Enter a description and click compile to simulate the 3D scene</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Script Editor & Scene Tree -->
+        <section class="panel data-panel">
+            <div class="tabs-nav">
+                <button class="tab-btn active" data-tab="script-tab">Blender Python</button>
+                <button class="tab-btn" data-tab="tree-tab">Scene Tree</button>
+                <button class="tab-btn" data-tab="eval-tab">Scorecard</button>
+            </div>
+            <div class="tabs-content">
+                <!-- Tab 1: Blender Python Script -->
+                <div class="tab-pane active" id="script-tab">
+                    <div class="code-header">
+                        <span>bpy_scene_script.py</span>
+                        <button id="copy-btn" class="copy-btn">Copy Script</button>
+                    </div>
+                    <pre class="code-editor"><code id="code-content"># Writeup script will appear here...</code></pre>
+                </div>
+
+                <!-- Tab 2: Scene Hierarchy Tree -->
+                <div class="tab-pane" id="tree-tab">
+                    <div class="tree-container" id="tree-content">
+                        <p class="empty-state">No active scene tree loaded.</p>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Evaluation Scorecard -->
+                <div class="tab-pane" id="eval-tab">
+                    <div class="eval-header-block">
+                        <button id="run-eval-btn" class="eval-btn">Run EDD Validation</button>
+                    </div>
+                    <div id="eval-content" class="eval-results-container">
+                        <p class="empty-state">Click Run to evaluate agent trajectories.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>&copy; 2026 VibeRender Workspace. Under the hood: Spec-Driven & Evaluation-Driven agent harness.</p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,370 @@
+import os
+import re
+import json
+import base64
+import time
+from io import BytesIO
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+
+class VibeRenderOrchestrator:
+    def __init__(self):
+        self.trajectory = []
+
+    def _record_tool(self, tool_name: str):
+        self.trajectory.append(tool_name)
+
+    def parse_scene_prompt(self, prompt: str) -> dict:
+        self._record_tool("agent:parse-prompt")
+        prompt_lower = prompt.lower()
+        
+        # Default parsed settings
+        product = "cylinder_product"
+        surface = "plane_table"
+        setting = "studio"
+        lighting = "sunset"
+        primary_color = (191, 90, 242)  # purple
+        secondary_color = (10, 132, 255) # blue
+        
+        # Simple keywords parsing
+        if "bottle" in prompt_lower or "perfume" in prompt_lower:
+            product = "perfume_bottle"
+            primary_color = (255, 45, 85) # pink/glass
+        elif "mug" in prompt_lower or "cup" in prompt_lower:
+            product = "coffee_mug"
+            primary_color = (255, 159, 10) # warm orange
+        elif "phone" in prompt_lower or "device" in prompt_lower:
+            product = "smartphone"
+            primary_color = (48, 209, 88) # green
+            
+        if "marble" in prompt_lower:
+            surface = "marble_table"
+            secondary_color = (244, 244, 245) # white
+        elif "wood" in prompt_lower or "desk" in prompt_lower:
+            surface = "wooden_desk"
+            secondary_color = (139, 69, 19) # brown
+            
+        if "forest" in prompt_lower:
+            setting = "forest"
+        elif "studio" in prompt_lower:
+            setting = "studio"
+            
+        if "sunset" in prompt_lower:
+            lighting = "sunset"
+        elif "warm" in prompt_lower or "indoor" in prompt_lower:
+            lighting = "warm_indoor"
+        elif "neon" in prompt_lower or "cyber" in prompt_lower:
+            lighting = "neon_cyber"
+
+        # Check if we can run Gemini to parse the prompt
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if api_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel("gemini-1.5-flash")
+                gemini_prompt = f"""
+                Parse this 3D rendering prompt into a JSON object:
+                "{prompt}"
+                
+                Identify the following fields:
+                - product: String (e.g. perfume_bottle, coffee_mug, smartphone)
+                - surface: String (e.g. marble_table, wooden_desk, glass_shelf)
+                - setting: String (e.g. forest, studio, office)
+                - lighting: String (e.g. sunset, warm_indoor, neon_cyber)
+                - colors: list of two RGB tuples [[R,G,B], [R,G,B]] representing product and setting primary/secondary colors.
+                
+                Return ONLY a valid JSON block, no markdown, no explanation.
+                """
+                response = model.generate_content(gemini_prompt)
+                match = re.search(r"\{.*\}", response.text.replace("\n", ""), re.DOTALL)
+                if match:
+                    parsed_json = json.loads(match.group(0))
+                    product = parsed_json.get("product", product)
+                    surface = parsed_json.get("surface", surface)
+                    setting = parsed_json.get("setting", setting)
+                    lighting = parsed_json.get("lighting", lighting)
+                    colors = parsed_json.get("colors")
+                    if colors and len(colors) >= 2:
+                        primary_color = tuple(colors[0])
+                        secondary_color = tuple(colors[1])
+            except Exception as e:
+                print(f"Gemini prompt parser failed, using fallback regex parser. Error: {e}")
+
+        return {
+            "product": product,
+            "surface": surface,
+            "setting": setting,
+            "lighting": lighting,
+            "primary_color": primary_color,
+            "secondary_color": secondary_color
+        }
+
+    def generate_blender_script(self, parsed: dict, original_prompt: str) -> str:
+        self._record_tool("agent:generate-script")
+        
+        product = parsed["product"]
+        surface = parsed["surface"]
+        setting = parsed["setting"]
+        lighting = parsed["lighting"]
+        
+        # Calculate light coordinates based on sunset or indoor settings
+        light_pos = (5.0, -5.0, 8.0) if lighting == "sunset" else (0.0, 2.0, 6.0)
+        light_color = (1.0, 0.7, 0.4) if lighting == "sunset" else (1.0, 1.0, 0.9)
+        light_energy = 1500 if lighting == "sunset" else 800
+        
+        # Bpy python script template
+        script = f"""# ==========================================
+# Blender Script Generated by VibeRender Agent
+# Prompt: "{original_prompt}"
+# ==========================================
+import bpy
+import math
+
+# 1. Clear default Blender objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# 2. Setup Render Settings
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.cycles.samples = 128
+
+# 3. Create Ground Surface ({surface})
+bpy.ops.mesh.primitive_plane_add(size=10, enter_editmode=False, align='WORLD', location=(0, 0, 0))
+plane = bpy.context.active_object
+plane.name = "Ground_Plane"
+
+# Create material for surface
+surface_mat = bpy.data.materials.new(name="Surface_Material")
+surface_mat.use_nodes = True
+nodes = surface_mat.node_tree.nodes
+principled = nodes.get("Principled BSDF")
+"""
+        
+        if "marble" in surface:
+            script += """principled.inputs['Base Color'].default_value = (0.9, 0.9, 0.9, 1.0)
+principled.inputs['Roughness'].default_value = 0.1
+principled.inputs['Specular'].default_value = 0.8
+"""
+        else:
+            script += """principled.inputs['Base Color'].default_value = (0.4, 0.25, 0.15, 1.0)
+principled.inputs['Roughness'].default_value = 0.6
+"""
+        script += """plane.data.materials.append(surface_mat)
+
+# 4. Create Product Mesh ({product})
+"""
+
+        if "bottle" in product:
+            script += """# Create Cylindrical Perfume Bottle
+bpy.ops.mesh.primitive_cylinder_add(radius=0.8, depth=2.4, location=(0, 0, 1.2))
+product_obj = bpy.context.active_object
+product_obj.name = "Perfume_Bottle"
+
+# Shading for Glass Material
+glass_mat = bpy.data.materials.new(name="Glass_Material")
+glass_mat.use_nodes = True
+glass_nodes = glass_mat.node_tree.nodes
+glass_principled = glass_nodes.get("Principled BSDF")
+glass_principled.inputs['Base Color'].default_value = (1.0, 0.8, 0.9, 1.0)
+glass_principled.inputs['Roughness'].default_value = 0.05
+glass_principled.inputs['Transmission'].default_value = 1.0
+glass_principled.inputs['IOR'].default_value = 1.45
+product_obj.data.materials.append(glass_mat)
+"""
+        elif "mug" in product:
+            script += """# Create Coffee Mug Shape
+bpy.ops.mesh.primitive_cylinder_add(radius=0.7, depth=1.6, location=(0, 0, 0.8))
+product_obj = bpy.context.active_object
+product_obj.name = "Coffee_Mug"
+
+# Ceramic Material
+ceramic_mat = bpy.data.materials.new(name="Ceramic_Material")
+ceramic_mat.use_nodes = True
+c_nodes = ceramic_mat.node_tree.nodes
+c_principled = c_nodes.get("Principled BSDF")
+c_principled.inputs['Base Color'].default_value = (0.9, 0.5, 0.1, 1.0)
+c_principled.inputs['Roughness'].default_value = 0.2
+product_obj.data.materials.append(ceramic_mat)
+"""
+        else:
+            script += """# Create Standard Cylinder placeholder
+bpy.ops.mesh.primitive_cylinder_add(radius=0.6, depth=1.5, location=(0, 0, 0.75))
+product_obj = bpy.context.active_object
+product_obj.name = "Product_Placeholder"
+"""
+
+        script += f"""
+# 5. Create Camera
+bpy.ops.object.camera_add(location=(3.5, -4.5, 3.0), rotation=(math.radians(65), 0, math.radians(35)))
+camera = bpy.context.active_object
+scene.camera = camera
+
+# 6. Create Light ({lighting})
+light_data = bpy.data.lights.new(name="Key_Light", type='POINT')
+light_data.energy = {light_energy}
+light_data.color = {light_color}
+light_obj = bpy.data.objects.new(name="Key_Light", object_data=light_data)
+bpy.context.collection.objects.link(light_obj)
+light_obj.location = {light_pos}
+
+print("Blender scene construction script completed successfully.")
+"""
+        return script
+
+    def simulate_3d_render(self, parsed: dict) -> str:
+        self._record_tool("blender:render-mock")
+        
+        # Dimensions of the viewport canvas
+        width, height = 800, 450
+        img = Image.new("RGB", (width, height), "#09090b") # Obsidian bg
+        draw = ImageDraw.Draw(img)
+        
+        # 1. Draw glowing background representing lighting setting
+        primary = parsed["primary_color"]
+        secondary = parsed["secondary_color"]
+        lighting = parsed["lighting"]
+        
+        # Setup radial sky gradient
+        sky_color = (40, 20, 50) if lighting == "sunset" else (30, 30, 40)
+        if lighting == "neon_cyber":
+            sky_color = (15, 10, 35)
+            
+        for r in range(width, 0, -20):
+            # Slow interpolation
+            ratio = r / width
+            curr_col = (
+                int(sky_color[0] * (1-ratio) + 9),
+                int(sky_color[1] * (1-ratio) + 9),
+                int(sky_color[2] * (1-ratio) + 11)
+            )
+            draw.ellipse((width//2 - r, height//2 - r, width//2 + r, height//2 + r), fill=curr_col)
+
+        # Draw a glowing sunset or spotlight orb
+        if lighting == "sunset":
+            draw.ellipse((width//2 - 60, height//2 - 60, width//2 + 60, height//2 + 60), fill=(255, 120, 40))
+        else:
+            # Soft ambient light cone
+            draw.ellipse((width//2 - 200, -50, width//2 + 200, 350), fill=(40, 45, 60))
+
+        # 2. Draw perspective grid lines representing the table surface
+        grid_color = (40, 40, 50)
+        center_x = width // 2
+        horizon_y = height // 2 + 30
+        
+        # Horizontal perspective grid bounds
+        table_points = [
+            (center_x - 300, horizon_y),      # top left
+            (center_x + 300, horizon_y),      # top right
+            (center_x + 450, height - 10),    # bottom right
+            (center_x - 450, height - 10)     # bottom left
+        ]
+        
+        # Fill table top with color based on surface
+        table_fill = (220, 220, 225) if "marble" in parsed["surface"] else (110, 60, 25)
+        draw.polygon(table_points, fill=table_fill, outline=grid_color)
+        
+        # Draw perspective lines on the table
+        for lx in range(-300, 301, 100):
+            draw.line((center_x + lx, horizon_y, center_x + lx * 1.5, height - 10), fill=grid_color, width=1)
+            
+        # 3. Draw 3D wireframe cylinder for the product
+        obj_center_x = center_x
+        obj_center_y = height // 2 + 100
+        obj_radius = 45
+        obj_height = 120
+        
+        # Draw cylinders representing the 3D mesh
+        prod_col = parsed["primary_color"]
+        
+        # Draw base ellipse
+        draw.ellipse(
+            (obj_center_x - obj_radius, obj_center_y - 15, obj_center_x + obj_radius, obj_center_y + 15), 
+            fill=(int(prod_col[0]*0.7), int(prod_col[1]*0.7), int(prod_col[2]*0.7)),
+            outline=prod_col, width=2
+        )
+        # Draw vertical lines
+        draw.line((obj_center_x - obj_radius, obj_center_y, obj_center_x - obj_radius, obj_center_y - obj_height), fill=prod_col, width=2)
+        draw.line((obj_center_x + obj_radius, obj_center_y, obj_center_x + obj_radius, obj_center_y - obj_height), fill=prod_col, width=2)
+        
+        # Draw top ellipse
+        draw.ellipse(
+            (obj_center_x - obj_radius, obj_center_y - obj_height - 15, obj_center_x + obj_radius, obj_center_y - obj_height + 15), 
+            fill=prod_col, outline=(255, 255, 255), width=2
+        )
+        
+        # Additional geometry details if bottle
+        if parsed["product"] == "perfume_bottle":
+            # Draw perfume cap
+            cap_radius = 20
+            cap_height = 30
+            draw.line((obj_center_x - cap_radius, obj_center_y - obj_height - 15, obj_center_x - cap_radius, obj_center_y - obj_height - cap_height), fill=(200, 200, 200), width=2)
+            draw.line((obj_center_x + cap_radius, obj_center_y - obj_height - 15, obj_center_x + cap_radius, obj_center_y - obj_height - cap_height), fill=(200, 200, 200), width=2)
+            draw.ellipse(
+                (obj_center_x - cap_radius, obj_center_y - obj_height - cap_height - 8, obj_center_x + cap_radius, obj_center_y - obj_height - cap_height + 8),
+                fill=(180, 180, 180), outline=(220, 220, 220), width=2
+            )
+        elif parsed["product"] == "coffee_mug":
+            # Draw mug handle
+            draw.arc(
+                (obj_center_x + obj_radius - 10, obj_center_y - obj_height + 20, obj_center_x + obj_radius + 30, obj_center_y - 20),
+                start=-90, end=90, fill=prod_col, width=6
+            )
+
+        # 4. Viewport HUD overlay details
+        # Camera grid/frustum lines
+        draw.line((horizon_y, horizon_y, horizon_y, height), fill=(255, 255, 255, 20), width=1)
+        
+        # HUD Text overlays
+        hud_color = (161, 161, 170)  # gray text
+        draw.text((20, 20), "[3D Viewport - Cycles Preview]", fill=parsed["primary_color"])
+        draw.text((20, 40), f"Camera: Perspective | Lens: 50mm", fill=hud_color)
+        draw.text((20, 60), f"Lighting: {parsed['lighting'].upper()}", fill=hud_color)
+        
+        draw.text((width - 180, 20), f"Objects: 2 active", fill=hud_color)
+        draw.text((width - 180, 40), f"Mesh: {parsed['product'].upper()}", fill=hud_color)
+        draw.text((width - 180, 60), f"Surface: {parsed['surface'].upper()}", fill=hud_color)
+
+        # Save to buffer as Base64 string
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        img_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return f"data:image/png;base64,{img_b64}"
+
+    def run_pipeline(self, query: str) -> dict:
+        self.trajectory = []
+        
+        # 1. Parse prompt
+        parsed = self.parse_scene_prompt(query)
+        
+        # 2. Compile Blender Script
+        script = self.generate_blender_script(parsed, query)
+        
+        # 3. Simulate Viewport Render
+        render_img = self.simulate_3d_render(parsed)
+        
+        # Build Scene Tree metadata
+        scene_tree = {
+            "objects": [
+                {"name": "Ground_Plane", "type": "MeshPlane", "location": [0.0, 0.0, 0.0], "material": parsed["surface"]},
+                {"name": parsed["product"].title(), "type": "MeshCylinder", "location": [0.0, 0.0, 1.0], "material": "Product_Material"}
+            ],
+            "lights": [
+                {"name": "Key_Light", "type": "PointLight", "location": [5.0, -5.0, 8.0] if parsed["lighting"] == "sunset" else [0.0, 2.0, 6.0], "energy": "1500W" if parsed["lighting"] == "sunset" else "800W"}
+            ],
+            "camera": {
+                "name": "Camera", "type": "Camera3D", "location": [3.5, -4.5, 3.0], "rotation": [65, 0, 35]
+            }
+        }
+        
+        return {
+            "status": "success",
+            "prompt": query,
+            "scene_tree": scene_tree,
+            "blender_script": script,
+            "render_image": render_img,
+            "trajectory": self.trajectory
+        }

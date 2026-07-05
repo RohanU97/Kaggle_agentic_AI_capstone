@@ -24,4 +24,4 @@ cookies.txt
 convert_webp_to_mp4.py
 
 # Large video assets
-assets/demo.mp4
+assets/*.mp4
